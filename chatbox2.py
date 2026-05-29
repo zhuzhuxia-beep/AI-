@@ -34,7 +34,7 @@ if prompt := st.chat_input("输入你的问题..."):          # 创建一个 inp
     # 在页面上展示这句话
     with st.chat_message("user"):
         st.write(prompt)
-
+        
     # 创建一个 AI 响应的容器
     with st.chat_message("assistant"):
         # 调用 deepseek，并获取到响应，写入容器里面
