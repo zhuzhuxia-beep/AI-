@@ -1,0 +1,14 @@
+node_modules
+frontend/node_modules
+backend/__pycache__
+backend/**/__pycache__
+backend/uploads/*
+backend/outputs/*
+backend/photos_db.json
+*.pyc
+.git
+.trae-cn
+*.md
+creative-proposal.html
+demo-preview.html
+start.bat

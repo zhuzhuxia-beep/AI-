@@ -1,0 +1,9 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.12
+pillow>=10.0.0
+numpy>=1.26.0
+opencv-python-headless>=4.9.0
+edge-tts>=6.1.0
+aiofiles>=24.0.0
+uuid7>=0.1.0

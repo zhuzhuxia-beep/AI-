@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 老照片时光机 — 创意提案</title>
+<style>
+  :root {
+    --bg: #0f0f14;
+    --card: #1a1a24;
+    --accent: #f0a050;
+    --accent2: #e08030;
+    --text: #e8e8ec;
+    --muted: #9090a0;
+    --border: #2a2a38;
+    --tag-bg: #252535;
+    --green: #4ecb71;
+    --blue: #5b9cf5;
+    --purple: #a78bfa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 80px 24px;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(240,160,80,0.08) 0%, transparent 70%);
+  }
+  .hero-particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: 0;
+    animation: floatUp 8s infinite;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(100vh) scale(0); opacity: 0; }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.6; }
+    100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 800px; }
+  .hero-badge {
+    display: inline-block;
+    padding: 6px 20px;
+    border-radius: 100px;
+    background: rgba(240,160,80,0.12);
+    border: 1px solid rgba(240,160,80,0.25);
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 32px;
+    letter-spacing: 1px;
+  }
+  .hero h1 {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #f0a050 0%, #f5c882 50%, #e08030 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-subtitle {
+    font-size: clamp(16px, 2.5vw, 20px);
+    color: var(--muted);
+    margin-bottom: 40px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .hero-tags {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .hero-tag {
+    padding: 8px 18px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .hero-tag.track { background: rgba(240,160,80,0.15); color: var(--accent); border: 1px solid rgba(240,160,80,0.3); }
+  .hero-tag.ai { background: rgba(167,139,250,0.12); color: var(--purple); border: 1px solid rgba(167,139,250,0.25); }
+
+  /* Sections */
+  .section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 80px 24px;
+  }
+  .section-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .section h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 40px;
+    line-height: 1.3;
+  }
+  .section h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 32px 0 12px;
+    color: #f0c080;
+  }
+  .section p {
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-size: 15px;
+  }
+
+  /* Cards */
+  .cards { display: grid; gap: 20px; }
+  .cards-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .cards-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .cards-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .card:hover { border-color: rgba(240,160,80,0.3); transform: translateY(-2px); }
+  .card-icon { font-size: 32px; margin-bottom: 16px; }
+  .card h4 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+  .card p { font-size: 14px; color: var(--muted); margin: 0; }
+
+  /* Flow */
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 40px 0;
+  }
+  .flow-step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    text-align: center;
+    min-width: 120px;
+  }
+  .flow-step .step-num {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .flow-step .step-title { font-size: 14px; font-weight: 600; }
+  .flow-step .step-desc { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .flow-arrow { color: var(--accent); font-size: 24px; font-weight: 300; }
+
+  /* Feature list */
+  .feature-list { list-style: none; }
+  .feature-list li {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .feature-list li:last-child { border-bottom: none; }
+  .feature-list .check {
+    color: var(--green);
+    font-weight: 700;
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .feature-list .item-title { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+  .feature-list .item-desc { font-size: 13px; color: var(--muted); }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; margin: 24px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--card);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border);
+  }
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+  }
+  tr:hover td { background: rgba(240,160,80,0.03); }
+  .td-highlight { color: var(--text) !important; font-weight: 500; }
+
+  /* VS Table */
+  .vs-table th:first-child, .vs-table td:first-child { font-weight: 600; color: var(--text); }
+  .vs-check { color: var(--green); font-weight: 700; }
+  .vs-cross { color: #e05050; }
+  .vs-us { color: var(--accent); font-weight: 700; }
+
+  /* Highlight box */
+  .highlight-box {
+    background: linear-gradient(135deg, rgba(240,160,80,0.08), rgba(240,160,80,0.02));
+    border: 1px solid rgba(240,160,80,0.2);
+    border-radius: 16px;
+    padding: 32px;
+    margin: 32px 0;
+  }
+  .highlight-box h4 { color: var(--accent); margin-bottom: 8px; }
+  .highlight-box p { margin: 0; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 32px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .timeline-item { position: relative; margin-bottom: 32px; }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -28px;
+    top: 4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid var(--bg);
+  }
+  .timeline-item .tl-date { font-size: 13px; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+  .timeline-item .tl-title { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+  .timeline-item .tl-desc { font-size: 14px; color: var(--muted); }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 60px 24px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .footer strong { color: var(--accent); }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .section { padding: 48px 20px; }
+    .section h2 { font-size: 24px; }
+    .flow { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ====== HERO ====== -->
+<section class="hero">
+  <div class="hero-particles" id="particles"></div>
+  <div class="hero-content">
+    <div class="hero-badge">TRAE AI 创造力大赛 · 创意提案</div>
+    <h1>AI 老照片时光机</h1>
+    <p class="hero-subtitle">上传一张老照片，AI 帮你修复、上色、生成动态回忆短片——让尘封的记忆重新活过来。</p>
+    <div class="hero-tags">
+      <span class="hero-tag track">🏠 生活娱乐赛道</span>
+      <span class="hero-tag ai">🤖 AI 原生应用</span>
+    </div>
+  </div>
+</section>
+
+<!-- ====== 创意介绍 ====== -->
+<section class="section">
+  <div class="section-label">01 / 创意介绍</div>
+  <h2>不只是修图工具，<br>而是一台有温度的「时光机」</h2>
+
+  <div class="highlight-box">
+    <h4>💡 一句话概括</h4>
+    <p>一个 Web 应用：用户上传老照片 → AI 自动修复、上色 → 讲述照片背后的故事 → AI 配音 → 合成动态回忆短片。</p>
+  </div>
+
+  <h3>想解决什么问题</h3>
+  <p>每个家庭都有泛黄、模糊、破损的老照片。现有的修复工具（如 Remini）只能修图，修完就结束了——照片背后的故事无法被记录，照片本身也不会"动"。我们想做的是把「修复 + 故事 + 动态」整合成一段完整的回忆短片。</p>
+
+  <h3>灵感来源</h3>
+  <p>去年春节回家，翻到奶奶 18 岁时的老照片——模糊、泛黄、还有折痕。奶奶看着照片讲了一个小时的故事，但照片本身却无法承载这些记忆。如果能用 AI 把照片修复、上色，再把奶奶讲的故事变成配音，让照片"动起来"，那该多好。</p>
+</section>
+
+<!-- ====== 用户流程 ====== -->
+<section class="section">
+  <div class="section-label">02 / 产品体验流程</div>
+  <h2>从老照片到回忆短片，只需 3 步</h2>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="step-num">STEP 1</div>
+      <div class="step-title">📷 上传老照片</div>
+      <div class="step-desc">AI 自动识别年代</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="step-num">STEP 2</div>
+      <div class="step-title">✨ 修复 + 上色</div>
+      <div class="step-desc">划痕修复 · 清晰增强 · 智能上色</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="step-num">STEP 3</div>
+      <div class="step-title">🎬 生成回忆短片</div>
+      <div class="step-desc">讲述故事 → AI 配音 → 动态短片</div>
+    </div>
+  </div>
+
+  <h3>四大核心引擎</h3>
+  <div class="cards cards-4">
+    <div class="card">
+      <div class="card-icon">🔧</div>
+      <h4>修复引擎</h4>
+      <p>划痕修复 · 噪点去除 · 清晰度增强 · 人脸还原</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎨</div>
+      <h4>上色引擎</h4>
+      <p>智能上色 · 风格迁移 · 年代配色 · 手动微调</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎥</div>
+      <h4>动态引擎</h4>
+      <p>Ken Burns 效果 · 微动效 · 粒子特效 · 转场动画</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎙️</div>
+      <h4>叙事引擎 ⭐</h4>
+      <p>用户讲故事 → AI 配音 → 年代音乐匹配 → 短片合成</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====== 目标用户 ====== -->
+<section class="section">
+  <div class="section-label">03 / 目标用户与痛点</div>
+  <h2>谁在用？为什么需要它？</h2>
+
+  <div class="cards cards-2">
+    <div class="card">
+      <div class="card-icon">👨‍👩‍👧</div>
+      <h4>25-45 岁子女（核心用户）</h4>
+      <p>翻到父母/祖父母的旧照片，想给长辈一个惊喜。春节回家不知道送什么礼物？一段"动起来"的回忆短片比任何礼物都珍贵。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">👴👵</div>
+      <h4>50-70 岁中老年人</h4>
+      <p>怀念年轻时的照片，想重温青春记忆。操作简单——子女帮忙上传，老人只需讲述故事。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎉</div>
+      <h4>家庭聚会场景</h4>
+      <p>春节、中秋等团聚时刻，一家人围坐一起看"动起来"的老照片，是最有仪式感的家庭活动。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">💝</div>
+      <h4>年轻情侣 / 夫妻</h4>
+      <p>修复早期模糊的合影，制作纪念日惊喜。一张模糊的合照 + 一段告白 = 最特别的礼物。</p>
+    </div>
+  </div>
+
+  <h3>当前痛点</h3>
+  <ul class="feature-list">
+    <li>
+      <span class="check">✕</span>
+      <div>
+        <div class="item-title">修图工具止步于"修"</div>
+        <div class="item-desc">Remini 等工具修完就结束了，缺乏叙事和动态体验，照片背后的故事无法被记录</div>
+      </div>
+    </li>
+    <li>
+      <span class="check">✕</span>
+      <div>
+        <div class="item-title">价格昂贵</div>
+        <div class="item-desc">Remini ¥68/周，普通家庭难以持续使用</div>
+      </div>
+    </li>
+    <li>
+      <span class="check">✕</span>
+      <div>
+        <div class="item-title">记忆无法传承</div>
+        <div class="item-desc">照片背后的故事只能口口相传，没有工具能将「修复 + 故事 + 动态」整合</div>
+      </div>
+    </li>
+  </ul>
+</section>
+
+<!-- ====== 竞品对比 ====== -->
+<section class="section">
+  <div class="section-label">04 / 为什么我们不一样</div>
+  <h2>竞品对比：我们不是修图工具，是记忆活化器</h2>
+
+  <div class="table-wrap">
+    <table class="vs-table">
+      <thead>
+        <tr>
+          <th>功能</th>
+          <th>Remini</th>
+          <th>你我当年</th>
+          <th>Google Photos</th>
+          <th style="color:var(--accent)">AI 老照片时光机</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>老照片修复</td>
+          <td class="vs-check">✓</td>
+          <td class="vs-check">✓</td>
+          <td class="vs-check">✓</td>
+          <td class="vs-us">✓</td>
+        </tr>
+        <tr>
+          <td>黑白上色</td>
+          <td class="vs-check">✓</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-us">✓</td>
+        </tr>
+        <tr>
+          <td>动态效果</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-us">✓ 让照片动起来</td>
+        </tr>
+        <tr>
+          <td>故事叙事</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-us">✓ AI 配音旁白</td>
+        </tr>
+        <tr>
+          <td>年代音乐匹配</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-cross">✕</td>
+          <td class="vs-us">✓ 沉浸式体验</td>
+        </tr>
+        <tr>
+          <td>价格</td>
+          <td>¥68/周</td>
+          <td>免费有限</td>
+          <td>免费</td>
+          <td class="vs-us">参赛作品</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight-box">
+    <h4>🎯 核心差异</h4>
+    <p>竞品是"修图工具"，我们是"记忆活化器"——修图只是手段，故事和情感才是产品。我们让老照片不仅能看，还能听、能动。</p>
+  </div>
+</section>
+
+<!-- ====== 价值意义 ====== -->
+<section class="section">
+  <div class="section-label">05 / 价值与意义</div>
+  <h2>不止是一个产品，更是一份情感的载体</h2>
+
+  <div class="cards cards-3">
+    <div class="card">
+      <div class="card-icon">❤️</div>
+      <h4>情感价值（核心）</h4>
+      <p>让尘封的家庭记忆重新鲜活，连接代际情感。照片不只是图像，更是一段可以"听"和"看"的故事。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌍</div>
+      <h4>社会价值</h4>
+      <p>助力家庭记忆的数字化保存与传承。可延伸至"智慧助老"附加赛题——帮助老年人用科技重温青春。</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">💰</div>
+      <h4>商业价值</h4>
+      <p>老照片修复是已验证的付费场景（Remini 年收入过亿）。"叙事+动态"的差异化定位，避开正面竞争。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====== 技术方案 ====== -->
+<section class="section">
+  <div class="section-label">06 / 技术可行性</div>
+  <h2>Demo 阶段 5-7 天可完成核心流程</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>功能模块</th>
+          <th>技术方案</th>
+          <th>成熟度</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="td-highlight">老照片修复</td>
+          <td>GFPGAN / CodeFormer（开源模型）</td>
+          <td>⭐⭐⭐⭐⭐ 非常成熟</td>
+        </tr>
+        <tr>
+          <td class="td-highlight">黑白上色</td>
+          <td>DeOldify / DDColor（开源模型）</td>
+          <td>⭐⭐⭐⭐⭐ 非常成熟</td>
+        </tr>
+        <tr>
+          <td class="td-highlight">清晰度增强</td>
+          <td>Real-ESRGAN（开源模型）</td>
+          <td>⭐⭐⭐⭐⭐ 非常成熟</td>
+        </tr>
+        <tr>
+          <td class="td-highlight">动态效果</td>
+          <td>Ken Burns 效果 + Canvas 动画</td>
+          <td>⭐⭐⭐⭐ 前端实现</td>
+        </tr>
+        <tr>
+          <td class="td-highlight">故事配音</td>
+          <td>Edge TTS / 火山引擎 TTS</td>
+          <td>⭐⭐⭐⭐⭐ 即用 API</td>
+        </tr>
+        <tr>
+          <td class="td-highlight">视频合成</td>
+          <td>FFmpeg（服务端合成）</td>
+          <td>⭐⭐⭐⭐⭐ 工业标准</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>初赛 Demo 开发计划</h3>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="tl-date">Week 1 · 6.16 - 6.22</div>
+      <div class="tl-title">搭建项目框架 + 接入修复/上色模型</div>
+      <div class="tl-desc">React 前端 + Python FastAPI 后端，接入 GFPGAN 和 DeOldify</div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-date">Week 2 · 6.23 - 6.29</div>
+      <div class="tl-title">实现对比展示 + 故事配音功能</div>
+      <div class="tl-desc">修复前后对比滑块、文字转语音配音</div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-date">Week 3 · 6.30 - 7.06</div>
+      <div class="tl-title">动态短片合成 + UI 打磨</div>
+      <div class="tl-desc">Ken Burns 动效、FFmpeg 合成、精美交互动画</div>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-date">Week 4 · 7.07 - 7.13</div>
+      <div class="tl-title">测试 + 录制 Demo 视频 + 提交</div>
+      <div class="tl-desc">端到端测试、录制演示视频、撰写作品帖</div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== 传播策略 ====== -->
+<section class="section">
+  <div class="section-label">07 / 传播策略</div>
+  <h2>天然适合短视频传播，抖音人气通道有优势</h2>
+
+  <div class="cards cards-2">
+    <div class="card">
+      <div class="card-icon">🎬</div>
+      <h4>内容钩子</h4>
+      <p>"我把奶奶18岁的照片修好了，她哭了"<br>"用AI修复了爸妈的结婚照"<br>"50年前的全家福，AI让它动起来了"</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📱</div>
+      <h4>裂变设计</h4>
+      <p>修复前后对比 = 天然催泪弹<br>评论区征集老照片 → 免费修复 → 传播飞轮<br>生成结果带品牌水印，自动引流</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====== 为什么能赢 ====== -->
+<section class="section">
+  <div class="section-label">08 / 为什么这个项目能赢</div>
+  <h2>六个维度的综合优势</h2>
+
+  <div class="cards cards-3">
+    <div class="card">
+      <div class="card-icon">💡</div>
+      <h4>创意性</h4>
+      <p>"时光机"概念远超普通修图工具，叙事+动态是独特记忆点</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚙️</div>
+      <h4>技术力</h4>
+      <p>多模型组合（修复+上色+动态+TTS），展示 AI 综合能力</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">✅</div>
+      <h4>完成度</h4>
+      <p>Demo 阶段即可产出完整可体验流程，5-7 天可交付</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌍</div>
+      <h4>社会价值</h4>
+      <p>传承家庭记忆，符合"有温度的生活方式"赛道定位</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📣</div>
+      <h4>传播力</h4>
+      <p>天然适合短视频传播，抖音人气通道有显著优势</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📈</div>
+      <h4>商业潜力</h4>
+      <p>老照片修复是已验证的付费场景，Remini 年收入过亿</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Footer ====== -->
+<footer class="footer">
+  <p>🏠 <strong>生活娱乐赛道</strong> · 造点新花样</p>
+  <p style="margin-top:8px;">TRAE AI 创造力大赛 · 2026 年 6 月</p>
+  <p style="margin-top:4px;font-size:12px;">用 TRAE Work 生成 · Auto 模式</p>
+</footer>
+
+<script>
+// Floating particles
+const container = document.getElementById('particles');
+for (let i = 0; i < 30; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const size = Math.random() * 4 + 2;
+  p.style.width = size + 'px';
+  p.style.height = size + 'px';
+  p.style.left = Math.random() * 100 + '%';
+  p.style.animationDelay = Math.random() * 8 + 's';
+  p.style.animationDuration = (Math.random() * 6 + 6) + 's';
+  container.appendChild(p);
+}
+</script>
+
+</body>
+</html>
