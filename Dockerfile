@@ -33,8 +33,8 @@ COPY --from=frontend-builder /static ./static/
 # Create directories
 RUN mkdir -p outputs uploads
 
-# Expose port
+# Expose port (Railway sets PORT env var)
 EXPOSE 8000
 
-# Run
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use shell form so $PORT is expanded at runtime
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}

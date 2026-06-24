@@ -7,21 +7,25 @@ Two-phase approach:
   3. Burn SRT subtitles
 """
 
-import subprocess, os, re, shutil, glob
+import subprocess, os, re, shutil, glob, sys
 
 
 def _find_ffmpeg():
     """
     Find a full-featured FFmpeg binary.
 
-    The TRAE-bundled FFmpeg is extremely stripped down (no zoompan, no audio
-    codecs, no image decoders). We search for a full build in common locations:
-    winget install path, system PATH (non-TRAE), chocolatey, etc.
+    On Linux (Docker): FFmpeg is installed via apt, just use shutil.which.
+    On Windows: TRAE bundles a stripped-down FFmpeg, so we search for
+    a full build in winget/chocolatey locations and verify zoompan support.
     """
-    # 1. Check common full-build locations
+    # Linux / macOS: system FFmpeg via PATH
+    if sys.platform != "win32":
+        path = shutil.which("ffmpeg")
+        return path if path else "ffmpeg"
+
+    # Windows: search for full build, skip TRAE's stripped version
     candidates = []
 
-    # winget Gyan.FFmpeg full build
     winget_base = os.path.join(
         os.environ.get("LOCALAPPDATA", ""),
         "Microsoft", "WinGet", "Packages"
@@ -30,37 +34,31 @@ def _find_ffmpeg():
         for d in os.listdir(winget_base):
             if "Gyan.FFmpeg" in d or "ffmpeg" in d.lower():
                 base = os.path.join(winget_base, d)
-                # Search for bin/ffmpeg.exe recursively
                 for root, dirs, files in os.walk(base):
                     if "ffmpeg.exe" in files:
                         candidates.append(os.path.join(root, "ffmpeg.exe"))
 
-    # chocolatey
     choco = shutil.which("ffmpeg")
     if choco and "TRAE" not in choco and "trae" not in choco:
         candidates.append(choco)
 
-    # System PATH entries (skip TRAE bundled)
     for p in os.environ.get("PATH", "").split(os.pathsep):
         exe = os.path.join(p, "ffmpeg.exe")
         if os.path.isfile(exe) and "TRAE" not in p and "trae" not in p.lower():
             candidates.append(exe)
 
-    # Test each candidate for zoompan support
     for exe in candidates:
         try:
             r = subprocess.run(
                 [exe, "-filters"],
                 capture_output=True, text=True, timeout=5
             )
-            # FFmpeg outputs filters to stderr (version info) + stdout (filter list)
             combined = r.stdout + r.stderr
             if r.returncode == 0 and "zoompan" in combined:
                 return exe
         except Exception:
             continue
 
-    # Fallback: return "ffmpeg" and hope for the best
     return "ffmpeg"
 
 
@@ -68,13 +66,14 @@ def _find_ffprobe(ffmpeg_path):
     """Find ffprobe next to the discovered ffmpeg."""
     if ffmpeg_path and ffmpeg_path != "ffmpeg":
         d = os.path.dirname(ffmpeg_path)
-        probe = os.path.join(d, "ffprobe.exe")
-        if os.path.isfile(probe):
-            return probe
-        probe = os.path.join(d, "ffprobe")
-        if os.path.isfile(probe):
-            return probe
-    return "ffprobe"
+        # Check both .exe (Windows) and bare name (Linux)
+        for name in ("ffprobe.exe", "ffprobe"):
+            probe = os.path.join(d, name)
+            if os.path.isfile(probe):
+                return probe
+    # Fallback: search PATH
+    probe = shutil.which("ffprobe")
+    return probe if probe else "ffprobe"
 
 
 # Detect full FFmpeg on module load

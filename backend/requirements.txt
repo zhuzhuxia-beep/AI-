@@ -6,4 +6,3 @@ numpy>=1.26.0
 opencv-python-headless>=4.9.0
 edge-tts>=6.1.0
 aiofiles>=24.0.0
-uuid7>=0.1.0
