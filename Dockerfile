@@ -12,12 +12,16 @@ FROM python:3.11-slim
 
 # Install FFmpeg (full version from Debian repos) and system deps
 # libass9: required for subtitles filter
+# fonts-noto-cjk: Chinese font for subtitle rendering (without this, subtitles filter fails)
+# fonts-dejavu: fallback Latin font
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ffmpeg \
         libass9 \
         libgl1 \
         libglib2.0-0 \
+        fonts-noto-cjk \
+        fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

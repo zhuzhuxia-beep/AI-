@@ -13,11 +13,39 @@ import subprocess, os, re, shutil, sys, logging
 logger = logging.getLogger(__name__)
 
 
+def _verify_ffmpeg(exe):
+    """Verify that an FFmpeg binary has the required filters and encoders."""
+    try:
+        r = subprocess.run([exe, "-filters"], capture_output=True, text=True, timeout=5)
+        combined = r.stdout + r.stderr
+        if r.returncode != 0 or "zoompan" not in combined:
+            return False
+        # Also check encoders
+        r2 = subprocess.run([exe, "-encoders"], capture_output=True, text=True, timeout=5)
+        enc = r2.stdout + r2.stderr
+        if "libx264" not in enc:
+            return False
+        return True
+    except Exception:
+        return False
+
+
 def _find_ffmpeg():
-    """Find a full-featured FFmpeg binary."""
+    """Find a full-featured FFmpeg binary (with zoompan + libx264)."""
     if sys.platform != "win32":
+        # Linux / container: check PATH, then common locations
+        candidates = []
         path = shutil.which("ffmpeg")
-        return path if path else "ffmpeg"
+        if path:
+            candidates.append(path)
+        for p in ("/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/opt/ffmpeg/bin/ffmpeg"):
+            if os.path.isfile(p):
+                candidates.append(p)
+        for exe in candidates:
+            if _verify_ffmpeg(exe):
+                return exe
+        # If we found ffmpeg but it lacks filters, still return it (better than nothing)
+        return candidates[0] if candidates else "ffmpeg"
 
     candidates = []
     winget_base = os.path.join(
@@ -42,15 +70,11 @@ def _find_ffmpeg():
             candidates.append(exe)
 
     for exe in candidates:
-        try:
-            r = subprocess.run([exe, "-filters"], capture_output=True, text=True, timeout=5)
-            combined = r.stdout + r.stderr
-            if r.returncode == 0 and "zoompan" in combined:
-                return exe
-        except Exception:
-            continue
+        if _verify_ffmpeg(exe):
+            return exe
 
-    return "ffmpeg"
+    # Fallback: return first candidate even if not verified
+    return candidates[0] if candidates else "ffmpeg"
 
 
 def _find_ffprobe(ffmpeg_path):
@@ -69,19 +93,21 @@ FFMPEG = _find_ffmpeg()
 FFPROBE = _find_ffprobe(FFMPEG)
 
 
-def _run_ffmpeg(cmd, label="ffmpeg"):
+def _run_ffmpeg(cmd, label="ffmpeg", timeout=300):
     """Run an FFmpeg command and return (success, stderr_tail)."""
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         if result.returncode != 0:
-            err_tail = result.stderr[-800:] if result.stderr else "(no stderr)"
-            logger.warning(f"{label} failed: {err_tail}")
+            err_tail = result.stderr[-1200:] if result.stderr else "(no stderr)"
+            logger.warning(f"{label} failed (rc={result.returncode}): {err_tail}")
             return False, err_tail
         return True, ""
     except subprocess.TimeoutExpired:
-        return False, f"{label} timed out after 120s"
+        return False, f"{label} timed out after {timeout}s"
+    except FileNotFoundError:
+        return False, f"FFmpeg binary not found: {cmd[0]}"
     except Exception as e:
-        return False, str(e)
+        return False, f"{label} exception: {e}"
 
 
 def compose_video(image_path, audio_path, output_path, duration=None, story_text=""):
@@ -89,6 +115,12 @@ def compose_video(image_path, audio_path, output_path, duration=None, story_text
     Compose a memory video with graceful degradation.
     Each stage has a fallback so the video is always produced if possible.
     """
+    # Validate inputs early — give a clear error instead of opaque FFmpeg failure
+    if not os.path.isfile(image_path):
+        raise RuntimeError(f"Image not found: {image_path}")
+    if not os.path.isfile(audio_path):
+        raise RuntimeError(f"Audio not found: {audio_path}")
+
     if duration is None:
         duration = get_audio_duration(audio_path) or 15.0
     duration = max(3.0, min(duration, 120.0))  # clamp to reasonable range
@@ -99,21 +131,35 @@ def compose_video(image_path, audio_path, output_path, duration=None, story_text
     total_frames = int(duration * fps)
     color_filter = mood["ffmpeg_color"]
 
+    errors = []  # collect errors from each stage for diagnostics
+
     # --- Stage 1: Prepare audio (narration + optional BGM) ---
     mixed_audio = output_path.replace(".mp4", "_mixed.aac")
-    bgm_ok = try_make_mixed_audio(audio_path, mixed_audio, duration, mood)
+    bgm_ok, bgm_err = try_make_mixed_audio(audio_path, mixed_audio, duration, mood)
+    if not bgm_ok:
+        errors.append(f"BGM: {bgm_err}")
     final_audio = mixed_audio if bgm_ok else audio_path
 
     # --- Stage 2: Ken Burns video with audio ---
     temp_video = output_path.replace(".mp4", "_temp.mp4")
-    kb_ok = try_ken_burns(image_path, final_audio, temp_video, duration, fps, total_frames, color_filter)
+    kb_ok, kb_err = try_ken_burns(image_path, final_audio, temp_video, duration, fps, total_frames, color_filter)
 
     if not kb_ok:
-        # Fallback: simple video without Ken Burns effect
-        kb_ok = try_simple_video(image_path, final_audio, temp_video, duration)
+        errors.append(f"KenBurns: {kb_err}")
+        # Fallback 1: simple video without Ken Burns effect
+        kb_ok, kb_err = try_simple_video(image_path, final_audio, temp_video, duration)
 
     if not kb_ok:
-        raise RuntimeError("All video generation strategies failed. Check FFmpeg installation.")
+        errors.append(f"SimpleVideo: {kb_err}")
+        # Fallback 2: minimal video (lower res, mpeg4 encoder)
+        kb_ok, kb_err = try_minimal_video(image_path, final_audio, temp_video, duration)
+
+    if not kb_ok:
+        errors.append(f"MinimalVideo: {kb_err}")
+        detail = " | ".join(errors)
+        raise RuntimeError(
+            f"All video generation strategies failed. FFmpeg={FFMPEG}. Errors: {detail}"
+        )
 
     # Clean up mixed audio
     if bgm_ok and os.path.exists(mixed_audio):
@@ -123,8 +169,9 @@ def compose_video(image_path, audio_path, output_path, duration=None, story_text
     if phrases:
         srt_path = output_path.replace(".mp4", ".srt")
         create_srt(phrases, duration, srt_path)
-        sub_ok = try_burn_subtitles(temp_video, srt_path, output_path)
+        sub_ok, sub_err = try_burn_subtitles(temp_video, srt_path, output_path)
         if not sub_ok:
+            errors.append(f"Subtitles: {sub_err}")
             shutil.copy2(temp_video, output_path)
         if os.path.exists(srt_path):
             os.remove(srt_path)
@@ -138,7 +185,7 @@ def compose_video(image_path, audio_path, output_path, duration=None, story_text
 
 
 def try_make_mixed_audio(narration_path, output_path, duration, mood):
-    """Generate background music and mix with narration. Returns True on success."""
+    """Generate background music and mix with narration. Returns (True, '') on success."""
     bgm_path = output_path.replace(".aac", "_bgm.aac")
     base_freq = mood["bgm_freq"]
 
@@ -164,7 +211,7 @@ def try_make_mixed_audio(narration_path, output_path, duration, mood):
     ok, err = _run_ffmpeg(bgm_cmd, "BGM generation")
     if not ok:
         # BGM failed — not fatal, narration alone is fine
-        return False
+        return False, err
 
     # Mix narration with BGM
     mix_cmd = [
@@ -183,17 +230,19 @@ def try_make_mixed_audio(narration_path, output_path, duration, mood):
         os.remove(bgm_path)
 
     if not ok:
-        return False
-    return True
+        return False, err
+    return True, ""
 
 
 def try_ken_burns(image_path, audio_path, output_path, duration, fps, total_frames, color_filter):
-    """Create Ken Burns zoom/pan video. Returns True on success."""
+    """Create Ken Burns zoom/pan video. Returns (True, '') on success."""
+    # Use -2 (not -1) to ensure even dimensions (required by yuv420p)
+    # Lower resolution (1280x720) to reduce memory usage in containers
     ken_burns = (
-        f"[0:v]scale=2560:-1,"
+        f"[0:v]scale=1706:-2,"
         f"zoompan=z='min(zoom+0.0008,1.5)':"
         f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-        f"d={total_frames}:s=1920x1080:fps={fps},"
+        f"d={total_frames}:s=1280x720:fps={fps},"
         f"{color_filter}[vo]"
     )
 
@@ -203,55 +252,100 @@ def try_ken_burns(image_path, audio_path, output_path, duration, fps, total_fram
         "-i", audio_path,
         "-filter_complex", ken_burns,
         "-map", "[vo]", "-map", "1:a",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
         "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "128k",
+        "-threads", "1",
         "-shortest",
         output_path,
     ]
 
     ok, err = _run_ffmpeg(cmd, "Ken Burns video")
-    return ok
+    return ok, err
 
 
 def try_simple_video(image_path, audio_path, output_path, duration):
-    """Fallback: simple video with static image + audio. Returns True on success."""
+    """Fallback: simple video with static image + audio. Returns (True, '') on success."""
     cmd = [
         FFMPEG, "-y",
         "-loop", "1", "-i", image_path,
         "-i", audio_path,
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "25",
         "-t", str(duration),
         "-pix_fmt", "yuv420p",
-        "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
+        "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
         "-c:a", "aac", "-b:a", "128k",
+        "-threads", "1",
         "-shortest",
         output_path,
     ]
 
     ok, err = _run_ffmpeg(cmd, "simple video fallback")
-    return ok
+    return ok, err
+
+
+def try_minimal_video(image_path, audio_path, output_path, duration):
+    """Last-resort fallback: tiny video with mpeg4 encoder. Returns (True, '') on success."""
+    cmd = [
+        FFMPEG, "-y",
+        "-loop", "1", "-i", image_path,
+        "-i", audio_path,
+        "-c:v", "mpeg4", "-q:v", "5",
+        "-t", str(duration),
+        "-pix_fmt", "yuv420p",
+        "-vf", "scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2",
+        "-c:a", "aac", "-b:a", "96k",
+        "-threads", "1",
+        "-shortest",
+        output_path,
+    ]
+
+    ok, err = _run_ffmpeg(cmd, "minimal video fallback")
+    return ok, err
 
 
 def try_burn_subtitles(input_video, srt_path, output_path):
-    """Burn SRT subtitles into video. Returns True on success."""
+    """Burn SRT subtitles into video. Returns (True, '') on success."""
     # On Linux, paths don't need colon escaping; on Windows they do
     if sys.platform == "win32":
         srt_escaped = srt_path.replace("\\", "/").replace(":", "\\:")
     else:
         srt_escaped = srt_path
 
+    # Try to find a usable font for subtitle rendering
+    font_candidates = [
+        # Linux container fonts (installed via apt)
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        # Windows fonts
+        "C:/Windows/Fonts/msyh.ttc",
+        "C:/Windows/Fonts/arial.ttf",
+    ]
+    font_path = next((f for f in font_candidates if os.path.isfile(f)), None)
+
+    if font_path:
+        if sys.platform == "win32":
+            font_escaped = font_path.replace("\\", "/").replace(":", "\\:")
+        else:
+            font_escaped = font_path
+        vf = f"subtitles={srt_escaped}:force_style='FontName={os.path.basename(font_path)}'"
+    else:
+        vf = f"subtitles={srt_escaped}"
+
     cmd = [
         FFMPEG, "-y",
         "-i", input_video,
-        "-vf", f"subtitles={srt_escaped}",
+        "-vf", vf,
         "-c:a", "copy",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+        "-threads", "1",
         output_path,
     ]
 
     ok, err = _run_ffmpeg(cmd, "subtitle burning")
-    return ok
+    return ok, err
 
 
 def create_srt(phrases, duration, srt_path):

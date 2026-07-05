@@ -7,6 +7,18 @@ from app.services.video_composer import compose_video, FFMPEG, FFPROBE
 router = APIRouter()
 
 
+def _check_ffmpeg_capability():
+    """Quick check: does FFMPEG have zoompan + libx264?"""
+    try:
+        r = subprocess.run([FFMPEG, "-filters"], capture_output=True, text=True, timeout=5)
+        has_zoompan = "zoompan" in (r.stdout + r.stderr)
+        r2 = subprocess.run([FFMPEG, "-encoders"], capture_output=True, text=True, timeout=5)
+        has_x264 = "libx264" in (r2.stdout + r2.stderr)
+        return {"zoompan": has_zoompan, "libx264": has_x264}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @router.post("/video/{photo_id}")
 async def generate_video(photo_id: str):
     photo = photos_db.get(photo_id)
@@ -48,7 +60,12 @@ async def generate_video(photo_id: str):
         # Return detailed error so frontend can display it
         return JSONResponse(
             status_code=500,
-            content={"detail": detail, "traceback": tb[-800:] if len(tb) > 800 else tb},
+            content={
+                "detail": detail,
+                "traceback": tb[-1200:] if len(tb) > 1200 else tb,
+                "ffmpeg_path": FFMPEG,
+                "ffmpeg_verified": _check_ffmpeg_capability(),
+            },
         )
 
 
