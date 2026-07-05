@@ -33,8 +33,19 @@ export async function generateStory(id, story) {
 
 // Generate video
 export async function generateVideo(id) {
-  const { data } = await api.post(`/video/${id}`)
-  return data
+  try {
+    const { data } = await api.post(`/video/${id}`)
+    return data
+  } catch (error) {
+    // Extract detailed error message from backend response
+    if (error.response?.data?.detail) {
+      throw new Error(error.response.data.detail)
+    }
+    if (error.response?.data?.traceback) {
+      throw new Error(`${error.response.data.detail || '视频生成失败'}\n${error.response.data.traceback}`)
+    }
+    throw error
+  }
 }
 
 // Get gallery (completed photos for showcase)
