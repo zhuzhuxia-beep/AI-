@@ -11,9 +11,11 @@ RUN npx vite build --outDir /static --emptyOutDir
 FROM python:3.11-slim
 
 # Install FFmpeg (full version from Debian repos) and system deps
+# libass9: required for subtitles filter
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ffmpeg \
+        libass9 \
         libgl1 \
         libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*

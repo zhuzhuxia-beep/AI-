@@ -42,4 +42,11 @@ async def generate_video(photo_id: str):
             "video_url": f"/outputs/{video_filename}",
         }
     except Exception as e:
-        raise HTTPException(500, f"视频生成失败: {str(e)}")
+        import traceback
+        detail = f"视频生成失败: {str(e)}"
+        # Include traceback tail for debugging on server
+        tb = traceback.format_exc()
+        if len(tb) > 500:
+            tb = "..." + tb[-500:]
+        print(f"[VIDEO ERROR] {detail}\n{tb}")
+        raise HTTPException(500, detail)
