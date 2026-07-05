@@ -3,3 +3,9 @@ healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
+
+# Persistent volume: survives container restarts and redeploys
+# Mount /data for uploads, outputs, and database
+[[deploy.volumes]]
+name = "app-data"
+mountPath = "/data"

@@ -17,13 +17,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Directories
-os.makedirs("outputs", exist_ok=True)
-os.makedirs("uploads", exist_ok=True)
+# Directories: use /data volume on Railway, local dirs in development
+from app.routers.upload import UPLOAD_DIR, OUTPUT_DIR
 
 # Serve uploaded photos and generated outputs
-app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # API routers
 app.include_router(upload.router, prefix="/api", tags=["upload"])

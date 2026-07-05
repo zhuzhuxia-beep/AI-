@@ -32,8 +32,8 @@ COPY backend/ ./
 # Copy built frontend static files
 COPY --from=frontend-builder /static ./static/
 
-# Create directories
-RUN mkdir -p outputs uploads
+# Create directories (Railway mounts persistent volume at /data)
+RUN mkdir -p /data/uploads /data/outputs /app/outputs /app/uploads
 
 # Expose port (Railway sets PORT env var)
 EXPOSE 8000

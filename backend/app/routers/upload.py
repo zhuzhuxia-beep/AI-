@@ -6,9 +6,16 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from PIL import Image
 
 router = APIRouter()
-UPLOAD_DIR = "uploads"
-OUTPUT_DIR = "outputs"
-DB_FILE = "photos_db.json"
+
+# Use /data volume on Railway (persistent), local dirs in development
+DATA_DIR = os.environ.get("DATA_DIR", "/data" if os.path.exists("/data") else ".")
+UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
+OUTPUT_DIR = os.path.join(DATA_DIR, "outputs")
+DB_FILE = os.path.join(DATA_DIR, "photos_db.json")
+
+# Ensure directories exist
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # File-backed store (survives restarts)
 photos_db = {}
